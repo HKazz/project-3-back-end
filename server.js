@@ -7,6 +7,7 @@ const cors = require('cors');
 const logger = require('morgan');
 const testJwtRouter = require("./controllers/test-jwt")
 const authRoutes = require("./controllers/auth.routes")
+const projectRoutes = require("./controllers/project.routes")
 const verifyToken = require("./middleware/verify-token")
 
 mongoose.connect(process.env.MONGODB_URI);
@@ -23,6 +24,8 @@ app.use(logger('dev'));
 app.use("/auth",authRoutes)
 
 app.use("/test-jwt",verifyToken,testJwtRouter)
+
+app.use('/', projectRoutes)
 
 
 
