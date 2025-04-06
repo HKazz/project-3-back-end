@@ -1,5 +1,6 @@
 const Project = require("../models/Project")
 const router = require("express").Router()
+const verifyToken = require("../middleware/verify-token")
 
 router.get("/", async(req,res)=>{
     try {
@@ -35,9 +36,14 @@ router.get("/:projectId", async(req,res)=>{
     }
 })
 
-router.put("/:projectId", async(req,res)=>{
+router.put("/:projectId",verifyToken, async(req,res)=>{
     try {
-        // const foundProject = await Project.findById(req.params.projectId)
+        
+        const foundProject = await Project.findById(req.params.projectId)
+        if(!foundProject.projectManager.equals(req.user._id)){
+            return res.status(409).json({err:"You are not the manager of this project."})
+        }
+
         const updatedProject = await Project.findByIdAndUpdate(req.params.projectId,req.body,{new:true})
         
         res.json(updatedProject)
@@ -46,11 +52,45 @@ router.put("/:projectId", async(req,res)=>{
     }
 })
 
-router.delete("/:projectId", async(req,res)=>{
+router.delete("/:projectId",verifyToken, async(req,res)=>{
     try {
-        const projectId = req.params.projectId
-        const deletedProject = await Project.findByIdAndDelete(projectId)
+        const foundProject = await Project.findById(req.params.projectId)
+        if(!foundProject.projectManager.equals(req.user._id)){
+            return res.status(409).json({err:"You are not the manager of this project."})
+        }
+        const deletedProject = await Project.findByIdAndDelete(req.params.projectId)
         res.json(deletedProject)
+    } catch (error) {
+        res.status(500).json({error:error.message})
+    }
+})
+
+router.put("/:projectId/members",verifyToken, async (req,res)=>{
+    try {
+        const foundProject = await Project.findById(req.params.projectId)
+        if(!foundProject.projectManager.equals(req.user._id)){
+            return res.status(409).json({err:"You are not the manager of this project."})
+        }
+        foundProject.teamMembers.push(...req.body.teamMembers)
+        foundProject.save()
+
+        res.status(200).json(foundProject)
+        
+    } catch (error) {
+        res.status(500).json({error:error.message})
+    }
+})
+
+router.delete("/:projectId/:memberId", verifyToken, async (req,res)=>{
+    try {
+        const foundProject = await Project.findById(req.params.projectId)
+        if(!foundProject.projectManager.equals(req.user._id)){
+            return res.status(409).json({err:"You are not the manager of this project."})
+        }
+        foundProject.teamMembers.remove(req.params.memberId)
+        foundProject.save()
+
+        res.status(200).json(foundProject)
     } catch (error) {
         res.status(500).json({error:error.message})
     }
