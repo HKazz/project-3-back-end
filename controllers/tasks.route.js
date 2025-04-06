@@ -32,4 +32,14 @@ router.post('/',verifyToken,async(req,res)=>{
     }
 })
 
+router.delete('/:taskId',verifyToken,async(req,res)=>{
+    try {
+        const deletedTask = await Task.findByIdAndDelete(req.params.taskId)
+
+        res.json(deletedTask)
+    } catch (error) {
+        res.status(500).json({error:error.message})
+    }
+})
+
 module.exports = router
