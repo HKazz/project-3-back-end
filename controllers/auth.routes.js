@@ -41,18 +41,25 @@ router.post("/login",async(req,res)=>{
         if(!foundUser){
             return res.status(401).json({err:"username not signed up. Please sign up"})
         }
+        console.log("In login")
 
         // 2. check if the password given in the req.body matches the passowrd in the DB
         const isPasswordMatch = bcrypt.compareSync(password,foundUser.hashedPassword)
         if(!isPasswordMatch){
             return res.status(401).json({err:"username or password incorrect"})
         }
+        console.log("In login 2")
+
         // 3. create the JWT token
         const payload = foundUser.toObject()
         delete payload.hashedPassword
+        console.log("In login 3")
+
 
         // sign(payload, secret password, expirastion time)
-        const token = jwt.sign({payload},process.env.JWT_SECRET,{expiresIn:"30m"})
+        const token = jwt.sign(payload,process.env.SESSION_SECRET,{expiresIn:"30m"})
+        console.log("In login 4")
+
 
         res.status(200).json({token})
 
