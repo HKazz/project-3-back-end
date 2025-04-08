@@ -74,6 +74,14 @@ router.put("/:projectId/members",verifyToken, async (req,res)=>{
         if (!Array.isArray(req.body.teamMembers)) {
             return res.status(400).json({ err: "teamMembers must be an array." });
         }
+
+        const alreadyAssigned = req.body.teamMembers.some(memberId => 
+            foundProject.teamMembers.includes(memberId)
+        );
+
+        if(alreadyAssigned){
+            return res.status(408).json({err: "User already assigned to this project."})
+        }
         foundProject.teamMembers.push(...req.body.teamMembers);
         await foundProject.save();
 
@@ -83,6 +91,23 @@ router.put("/:projectId/members",verifyToken, async (req,res)=>{
         res.status(500).json({error:error.message})
     }
 })
+
+router.get('/:projectId/members', verifyToken, async (req, res) => {
+    try {
+        const foundProject = await Project.findById(req.params.projectId).populate('teamMembers');
+        if (!foundProject) {
+            return res.status(404).json({ err: "Project not found." });
+        }
+        if (!foundProject.projectManager.equals(req.user._id)) {
+            return res.status(409).json({ err: "You are not the manager of this project." });
+        }
+        
+        const teamMembers = foundProject.teamMembers
+        res.json(teamMembers);
+    } catch (error) {
+        res.status(500).json({ err: error.message });
+    }
+});
 
 router.delete("/:projectId/:memberId", verifyToken, async (req,res)=>{
     try {
