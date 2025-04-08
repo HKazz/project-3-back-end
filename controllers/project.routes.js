@@ -71,8 +71,11 @@ router.put("/:projectId/members",verifyToken, async (req,res)=>{
         if(!foundProject.projectManager.equals(req.user._id)){
             return res.status(409).json({err:"You are not the manager of this project."})
         }
-        foundProject.teamMembers.push(...req.body.teamMembers)
-        foundProject.save()
+        if (!Array.isArray(req.body.teamMembers)) {
+            return res.status(400).json({ err: "teamMembers must be an array." });
+        }
+        foundProject.teamMembers.push(...req.body.teamMembers);
+        await foundProject.save();
 
         res.status(200).json(foundProject)
         
