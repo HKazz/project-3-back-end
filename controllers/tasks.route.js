@@ -117,4 +117,24 @@ router.get('/:projectId/assignedUsers', verifyToken, async (req, res) => {
     }
 })
 
+router.delete("/:projectId/tasks/:taskId/:assignedUserId", verifyToken, async (req,res)=>{
+    try {
+        const foundTask = await Task.findById(req.params.taskId)
+        if(!foundTask){
+            return res.status(509).json({err: "No task found."})
+        }
+        if(!foundTask.projectManager.equals(req.user._id)){
+            return res.status(409).json({err:"You are not the manager of this project."})
+        }
+        const assignedUserId = req.params.assignedUserId
+        console.log("Assigned User: " + assignedUserId)
+        foundTask.assignedUser = null
+        foundTask.save()
+
+        res.status(200).json(foundTask)
+    } catch (error) {
+        res.status(500).json({error:error.message})
+    }
+})
+
 module.exports = router
