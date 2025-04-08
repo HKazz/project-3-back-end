@@ -28,11 +28,15 @@ const projectSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User',
     }],
-    projectManager: {
+    tasks: [{
         type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-    },
+        ref: 'Tasks'
+    }],
+    projectManager: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        },
     createdAt: {
         type: Date,
         default: Date.now,

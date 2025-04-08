@@ -26,9 +26,9 @@ app.use(logger('dev'));
 app.use("/auth",authRoutes)
 
 // app.use("/test-jwt",verifyToken,testJwtRouter)
-app.use('/task',taskRoutes)
+app.use('/',taskRoutes)
 
-app.use('/', projectRoutes)
+app.use('/project', projectRoutes)
 
 
 
