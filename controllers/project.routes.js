@@ -4,21 +4,20 @@ const verifyToken = require("../middleware/verify-token")
 
 router.get("/", async(req,res)=>{
     try {
-        const allProjects = await Project.find().populate([
-            "projectName",
-            "projectDescription"
-        ])
+        const allProjects = await Project.find().populate('projectManager', 'username')
         res.json(allProjects)
     } catch (error) {
-        res.status(500).json(error)
+        res.status(500).json({error: error.message})
     }
 })
 
-router.post("/", async(req,res)=>{
+router.post("/", verifyToken, async(req,res)=>{
     try {
+        req.body.projectManager = req.user._id
         const newProject = await Project.create(req.body)
         res.status(201).json(newProject)
     } catch (error) {
+        console.log(error)
         res.status(500).json({error:error.message})
     }
 })
@@ -26,10 +25,15 @@ router.post("/", async(req,res)=>{
 
 router.get("/:projectId", async(req,res)=>{
     try {
-        const foundProject = await Project.findById(req.params.projectId).populate([
-            "projectName",
-            "projectDescription"
-        ])
+        const foundProject = await Project.findById(req.params.projectId)
+            .populate('projectManager', 'username')
+            .populate('teamMembers', 'username')
+            .populate('tasks')
+        
+        if (!foundProject) {
+            return res.status(404).json({error: "Project not found"})
+        }
+        
         res.json(foundProject)
     } catch (error) {
         res.status(500).json({error:error.message})

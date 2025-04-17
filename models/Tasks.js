@@ -4,7 +4,6 @@ const taskSchema = new Schema({
     taskName : {
         type: String,
         required: true,
-        unique: true,
     },
     taskDescription: {
         type: String, 
@@ -18,9 +17,14 @@ const taskSchema = new Schema({
     endDate: {
         type: Date,
     },
+    priority: {
+        type: String,
+        enum: ['low', 'medium', 'high'],
+        default: 'medium',
+    },
     status: {
         type: String,
-        enum: ['Not Started', 'In Progress', 'Completed'],
+        enum: ['Not Started', 'In Progress', 'Completed', 'pending', 'in progress', 'completed'],
         default: 'Not Started',
     },
     createdAt: {
