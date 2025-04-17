@@ -69,32 +69,47 @@ router.delete("/:projectId",verifyToken, async(req,res)=>{
     }
 })
 
-router.put("/:projectId/members",verifyToken, async (req,res)=>{
+router.put("/:projectId/members", verifyToken, async (req, res) => {
     try {
-        const foundProject = await Project.findById(req.params.projectId)
-        if(!foundProject.projectManager.equals(req.user._id)){
-            return res.status(409).json({err:"You are not the manager of this project."})
+        const foundProject = await Project.findById(req.params.projectId);
+        if (!foundProject) {
+            return res.status(404).json({ error: "Project not found" });
         }
-        if (!Array.isArray(req.body.teamMembers)) {
-            return res.status(400).json({ err: "teamMembers must be an array." });
+        
+        if (!foundProject.projectManager.equals(req.user._id)) {
+            return res.status(403).json({ error: "You are not the manager of this project." });
         }
 
-        const alreadyAssigned = req.body.teamMembers.some(memberId => 
-            foundProject.teamMembers.includes(memberId)
+        if (!Array.isArray(req.body.teamMembers)) {
+            return res.status(400).json({ error: "teamMembers must be an array." });
+        }
+
+        // Check if any of the new members are already in the project
+        const alreadyAssigned = req.body.teamMembers.some(newMember => 
+            foundProject.teamMembers.some(existingMember => 
+                existingMember.user.toString() === newMember.user.toString()
+            )
         );
 
-        if(alreadyAssigned){
-            return res.status(408).json({err: "User already assigned to this project."})
+        if (alreadyAssigned) {
+            return res.status(409).json({ error: "One or more users are already members of this project." });
         }
+
+        // Add the new members with their additional information
         foundProject.teamMembers.push(...req.body.teamMembers);
         await foundProject.save();
 
-        res.status(200).json(foundProject)
-        
+        // Populate the user information before sending the response
+        const updatedProject = await Project.findById(req.params.projectId)
+            .populate('projectManager', 'username')
+            .populate('teamMembers.user', 'username');
+
+        res.status(200).json(updatedProject);
     } catch (error) {
-        res.status(500).json({error:error.message})
+        console.error('Error adding team members:', error);
+        res.status(500).json({ error: error.message });
     }
-})
+});
 
 router.get('/:projectId/members', verifyToken, async (req, res) => {
     try {
@@ -113,19 +128,40 @@ router.get('/:projectId/members', verifyToken, async (req, res) => {
     }
 });
 
-router.delete("/:projectId/:memberId", verifyToken, async (req,res)=>{
+router.delete("/:projectId/:memberId", verifyToken, async (req, res) => {
     try {
-        const foundProject = await Project.findById(req.params.projectId)
-        if(!foundProject.projectManager.equals(req.user._id)){
-            return res.status(409).json({err:"You are not the manager of this project."})
+        const foundProject = await Project.findById(req.params.projectId);
+        if (!foundProject) {
+            return res.status(404).json({ error: "Project not found" });
         }
-        foundProject.teamMembers.remove(req.params.memberId)
-        foundProject.save()
+        
+        if (!foundProject.projectManager.equals(req.user._id)) {
+            return res.status(403).json({ error: "You are not the manager of this project." });
+        }
 
-        res.status(200).json(foundProject)
+        // Find the member by their user ID and remove them
+        const memberIndex = foundProject.teamMembers.findIndex(
+            member => member.user.toString() === req.params.memberId
+        );
+
+        if (memberIndex === -1) {
+            return res.status(404).json({ error: "Member not found in this project" });
+        }
+
+        // Remove the member
+        foundProject.teamMembers.splice(memberIndex, 1);
+        await foundProject.save();
+
+        // Populate the user information before sending the response
+        const updatedProject = await Project.findById(req.params.projectId)
+            .populate('projectManager', 'username')
+            .populate('teamMembers.user', 'username');
+
+        res.status(200).json(updatedProject);
     } catch (error) {
-        res.status(500).json({error:error.message})
+        console.error('Error removing team member:', error);
+        res.status(500).json({ error: error.message });
     }
-})
+});
 
 module.exports = router

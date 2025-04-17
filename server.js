@@ -11,6 +11,7 @@ const projectRoutes = require("./controllers/project.routes");
 const Project = require("./models/Project");
 const Task = require("./models/Tasks");
 const verifyToken = require("./middleware/verify-token");
+const User = require("./models/User");
 
 // MongoDB Connection with error handling
 mongoose.connect(process.env.MONGODB_URI)
@@ -47,9 +48,9 @@ app.use('/tasks', taskRoutes);
 // Project routes
 app.get('/api/projects', verifyToken, async (req, res) => {
   try {
-    const projects = await Project.find({ projectManager: req.user._id })
+    const projects = await Project.find()
       .populate('projectManager', 'username')
-      .populate('teamMembers', 'username');
+      .populate('teamMembers.user', 'username');
     res.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);
@@ -62,11 +63,11 @@ app.get('/api/user/projects', verifyToken, async (req, res) => {
     const projects = await Project.find({ 
       $or: [
         { projectManager: req.user._id },
-        { teamMembers: req.user._id }
+        { 'teamMembers.user': req.user._id }
       ]
     })
     .populate('projectManager', 'username')
-    .populate('teamMembers', 'username')
+    .populate('teamMembers.user', 'username')
     .populate({
       path: 'tasks',
       populate: [
@@ -94,6 +95,32 @@ app.get('/api/tasks/:taskId', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching task:', error);
     res.status(500).json({ error: 'Failed to fetch task' });
+  }
+});
+
+app.put('/api/tasks/:taskId', verifyToken, async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.taskId);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Check if user is authorized to edit the task
+    if (!task.projectManager.equals(req.user._id) && !task.assignedUser?.equals(req.user._id)) {
+      return res.status(403).json({ error: 'You are not authorized to edit this task' });
+    }
+
+    // Update task
+    const updatedTask = await Task.findByIdAndUpdate(
+      req.params.taskId,
+      { ...req.body, updatedAt: Date.now() },
+      { new: true }
+    );
+
+    res.json(updatedTask);
+  } catch (error) {
+    console.error('Error updating task:', error);
+    res.status(500).json({ error: 'Failed to update task' });
   }
 });
 
@@ -133,6 +160,43 @@ app.post('/api/tasks', verifyToken, async (req, res) => {
   } catch (error) {
     console.error("Error creating task:", error);
     res.status(500).json({ error: 'Failed to create task' });
+  }
+});
+
+// User routes
+app.get('/api/users/username/:username', verifyToken, async (req, res) => {
+  try {
+    console.log('Searching for user with username:', req.params.username);
+    const searchUsername = req.params.username.toLowerCase();
+    console.log('Converted to lowercase:', searchUsername);
+    
+    const user = await User.findOne({ 
+      username: searchUsername 
+    }).select('-hashedPassword');
+    
+    console.log('Search result:', user);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Error finding user:', error);
+    res.status(500).json({ error: 'Failed to find user' });
+  }
+});
+
+app.get('/api/users/by-email/:email', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.params.email }).select('_id email username');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Error finding user by email:', error);
+    res.status(500).json({ error: 'Failed to find user' });
   }
 });
 

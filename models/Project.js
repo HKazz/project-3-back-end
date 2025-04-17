@@ -1,6 +1,6 @@
-const {Schema, model} = require("mongoose")
+const mongoose = require('mongoose');
 
-const projectSchema = new Schema({
+const projectSchema = new mongoose.Schema({
     projectName: {
         type: String,
         unique: true,
@@ -18,6 +18,7 @@ const projectSchema = new Schema({
     },
     endDate: {
         type: Date,
+        required: true,
     },
     status: {
         type: String,
@@ -25,28 +26,56 @@ const projectSchema = new Schema({
         default: 'Not Started',
     },
     teamMembers: [{
-        type: Schema.Types.ObjectId,
-        ref: 'User',
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        part: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        note: {
+            type: String,
+            trim: true
+        },
+        joinDate: {
+            type: Date,
+            default: Date.now
+        }
     }],
     tasks: [{
-        type: Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'Tasks'
     }],
     projectManager: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: true,
-        },
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
     },
     updatedAt: {
         type: Date,
+        default: Date.now,
     },
 });
 
-const Project = model("Project", projectSchema)
+// Update the updatedAt timestamp before saving
+projectSchema.pre('save', function(next) {
+    this.updatedAt = Date.now();
+    next();
+});
+
+const Project = mongoose.model("Project", projectSchema)
 
 module.exports = Project
 
